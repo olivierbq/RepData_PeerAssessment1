@@ -6,20 +6,120 @@ output:
 ---
 
 
-## Loading and preprocessing the data
+### Loading and preprocessing the data
+```{R echo = TRUE}
+fileurl <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+datadir <- "./"
+zipfile <- "activity.zip"
+zipfilefullpath <- paste(datadir, "/", zipfile, sep="")
+```
+
+### Unzip the data file 
+```{R echo = TRUE}
+unzip(zipfile = zipfilefullpath, exdir = datadir)
+```
+
+### Load Data
+```{R echo = TRUE}
+if(!exists("ACT")){
+  print("loading activity.csv")
+  ACT <- read.csv("./activity.csv")
+}else{
+  print("activity.csv already loaded")
+}
+```
+
+###Transform Data 
+```{R echo = TRUE}
+ACT$date <- as.Date(ACT$date, format= "%Y-%m-%d")
+rmna <- na.omit(ACT)
+ACTSum <- aggregate(steps ~ date, data=rmna, FUN = sum)
+```
+
+### What is mean total number of steps taken per day?
+```{R echo = TRUE}
+ACTSum <- aggregate(steps ~ date, data=rmna, FUN = sum)
+barplot(ACTSum$steps, names.arg = ACTSum$date, main="Steps per Day",ylab="Steps",xlab="", cex.names= 0.6, cex.axis=0.6, las=2, border = NA)
+```
+
+#### What is the mean of the total number of steps taken per day
+```{R echo = TRUE}
+mean(ACTSum$steps)
+
+```
+
+#### What is the median of the total number of steps taken per day
+```{R echo = TRUE}
+median(ACTSum$steps)
+```
+
+### What is the average daily activity pattern?
+
+#### Make a time series plot
+
+```{R echo = TRUE}
+ACTInt <- aggregate(steps ~ interval, data=rmna, FUN = mean)
+plot(ACTInt$steps, main="Steps per Day",ylab="Steps",xlab="Intervals each day", type = "l")
+```
 
 
+#### The 5-minute interval that contains the maximum number of steps
+```{R echo = TRUE}
+which.max(ACTInt$steps)
+```
 
-## What is mean total number of steps taken per day?
+### Imputing missing values
+#### Total number of NA Values 
+```{R echo = TRUE}
+sum(is.na(ACT))
+```
 
+####Strategy for filling in all of the missing values in the dataset.
+```{R echo = TRUE}
+ACTMerged <- merge(ACT, ACTInt, by="interval")
+ACTMerged$steps.x[is.na(ACTMerged$steps.x)] <- ACTMerged$steps.y[is.na(ACTMerged$steps.x)]
+```
+####Create a new dataset that is equal to the original dataset but with the missing data filled in
+```{R echo = TRUE}
+ACTNew <- ACT
+ACTNew$steps <- round(ACTMerged$steps.x, digits = 2)
+```
 
+##### Histogram of the new data set with the dayly steps taken (Mean and Median)
+```{R echo = TRUE}
+ACTNewSum <- aggregate(steps ~ date, data=ACTNew, FUN = sum)
+barplot(ACTNewSum$steps, names.arg = ACTNewSum$date, main="Steps per Day",ylab="Steps",xlab="", cex.names= 0.6, cex.axis=0.6, las=2, border = NA)
+```
 
-## What is the average daily activity pattern?
+####Mean
+```{R echo = TRUE}
+mean(ACTNewSum$steps)
+```
 
-
-
-## Imputing missing values
-
-
+####Median
+```{R echo = TRUE}
+median(ACTNewSum$steps)
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+###Create a new factor variable in the dataset with two levels -- "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+
+```{R echo = TRUE}
+ACT$dateType <-  as.factor(ifelse(as.POSIXlt(ACT$date)$wday %in% c(0,6), 'weekend', 'weekday'))
+```
+
+###Make a panel plot containing a time series plot of weekend and week
+
+```{R echo = TRUE}
+Weekdata <- ACT[ACT$dateType == "weekday",]
+Weekenddata <- ACT[ACT$dateType == "weekend",]
+
+par(mfrow=c(2,1))
+ACTWeek <- aggregate(steps ~ interval, data=Weekdata, FUN = mean)
+plot(ACTWeek, main="Steps during the Week",ylab="Steps",xlab="Intervals during week", type = "l")
+
+ACTWeekend <- aggregate(steps ~ interval, data=Weekenddata, FUN = mean)
+plot(ACTWeekend, main="Steps during the Weekend",ylab="Steps",xlab="Intervals during weekend", type = "l")
+```
+
